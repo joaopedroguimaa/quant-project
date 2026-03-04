@@ -1,12 +1,13 @@
 import yfinance as yf
 import pandas as pd 
-
+from database.connection import DataBase 
 
 class DataFetcher:
     def __init__(self):
         self.lista_tickers = [ "MSFT"]
         self.period = "5d"
         self.interval = "1d"
+        self.db = DataBase()
 
     def get_symbols(self):
         return self.lista_tickers
@@ -43,6 +44,12 @@ class DataFetcher:
                 linhas.append(linha)
         return pd.DataFrame(linhas)
     
+    def save_data(self):
+        dados_brutos = self.set_interval()
+        dados_linha =  self.data_to_rows(dados_brutos)
+        dados_novos = self.db.insert_dados(dados_linha)
+        return dados_novos
+
 fetcher = DataFetcher()
 
 dados_brutos = fetcher.get_data()
