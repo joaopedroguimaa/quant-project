@@ -4,7 +4,7 @@ import pandas as pd
 
 class DataFetcher:
     def __init__(self):
-        self.lista_tickers = ["AAPL", "GOOGL", "MSFT"]
+        self.lista_tickers = [ "MSFT"]
         self.period = "5d"
         self.interval = "1d"
 
@@ -20,8 +20,33 @@ class DataFetcher:
     
     def get_data(self):
         dados = self.set_interval()
-        print(dados['Close'].head())
+        print(dados.head())
+        print("\nColunas:", dados.columns)
+        print("\nTipo:", type(dados))
         return dados
     
+    def data_to_rows(self, dados):
+        linhas = []
+
+        tickers = dados.columns.get_level_values(1).unique()
+        for data in dados.index:
+            for ticker in tickers:
+                linha = {
+                    'date' : data.strftime('%Y-%m-%d'),
+                    'ticker': ticker,
+                    'open': float(dados['Open'][ticker][data]),
+                    'high': float(dados['High'][ticker][data]),
+                    'low': float(dados['Low'][ticker][data]),
+                    'close': float(dados['Close'][ticker][data]),
+                    'volume': int(dados['Volume'][ticker][data])
+                }
+                linhas.append(linha)
+        return pd.DataFrame(linhas)
+    
 fetcher = DataFetcher()
-fetcher.get_data()
+
+dados_brutos = fetcher.get_data()
+
+dados_linha = fetcher.data_to_rows(dados_brutos)
+
+print (dados_linha)
