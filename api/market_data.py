@@ -4,7 +4,7 @@ from database.connection import DataBase
 
 class DataFetcher:
     def __init__(self):
-        self.lista_tickers = [ "MSFT"]
+        self.lista_tickers = [ "MSFT", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "B3SA3.SA" ]
         self.period = "2y"
         self.interval = "1d"
         self.db = DataBase()
@@ -42,7 +42,7 @@ class DataFetcher:
                 try:
                     linha = {
                         'date' : data.strftime('%Y-%m-%d'),
-                        'ticker': ticker,
+                        'ticker': ticker.replace('.SA', ''),
                         'open': float(dados['Open'][ticker][data]),
                         'high': float(dados['High'][ticker][data]),
                         'low': float(dados['Low'][ticker][data]),
@@ -65,4 +65,5 @@ class DataFetcher:
              return 0
 
         dados_novos = self.db.insert_dados(dados_linha)
+        self.db.export_to_excel()
         return dados_novos
