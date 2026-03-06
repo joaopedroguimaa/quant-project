@@ -1,0 +1,247 @@
+# analise_returns.py
+import pandas as pd
+import numpy as np
+from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore')
+
+# Importar os módulos existentes
+from factors.momentum import get_data_momentum, ranking_momentum
+from factors.liquidity import get_data_liquidity, ranking_liquidity
+from factors.volatility import get_data_volatility, ranking_volatility
+
+class AnaliseConsolidada:
+    """
+    Classe que consolida as análises de Momentum, Liquidez e Volatilidade
+    para gerar recomendações de investimento
+    """
+    
+    def __init__(self, db_path="database/acoes.db"):
+        self.db_path = db_path
+        self.resultados = {}
+        self.ranking_final = None
+        
+    def executar_todas_analises(self, tickers=None):
+    
+        df_momentum = get_data_momentum(self.db_path, tickers)
+        if not df_momentum.empty:
+            self.resultados['momentum'] = ranking_momentum(df_momentum)
+            print(f"    {len(self.resultados['momentum'])} ativos analisados")
+
+        df_liquidity = get_data_liquidity(self.db_path, tickers)
+        if not df_liquidity.empty:
+            self.resultados['liquidez'] = ranking_liquidity(df_liquidity)
+            print(f"    {len(self.resultados['liquidez'])} ativos analisados")
+        
+        df_volatility = get_data_volatility(self.db_path, tickers)
+        if not df_volatility.empty:
+            self.resultados['volatilidade'] = ranking_volatility(df_volatility)
+            print(f"    {len(self.resultados['volatilidade'])} ativos analisados")
+        
+        return self.resultados
+    
+    def consolidar_resultados(self):
+        """
+        Combina os resultados das 3 análises em um único DataFrame
+        """
+        if len(self.resultados) < 3:
+            print("Execute todas as análises primeiro!")
+            return None
+        
+        # Começar com o momentum como base
+        consolidado = self.resultados['momentum'].copy()
+        
+        # Renomear colunas para evitar conflito
+        consolidado = consolidado.rename(columns={
+            'retorno_12m': 'mom_retorno',
+            'momentum_score': 'mom_score'
+        })
+        
+
+        liq = self.resultados['liquidez'][['ticker', 'adtv_21', 'amihud_medio_21', 'liquidez_score']]
+        consolidado = consolidado.merge(liq, on='ticker', how='inner')
+        
+
+        vol = self.resultados['volatilidade'][['ticker', 'vol_historica', 'vol_park_media', 'risco_score']]
+        consolidado = consolidado.merge(vol, on='ticker', how='inner')
+
+        
+        # Momentum: quanto maior, melhor
+        consolidado['mom_score_norm'] = consolidado['mom_score'].rank(pct=True) * 100
+        
+        # Liquidez: quanto maior, melhor
+        consolidado['liq_score_norm'] = consolidado['liquidez_score']
+        
+        # Risco: quanto MENOR, melhor (inverter o score)
+        consolidado['risco_score_norm'] = 100 - consolidado['risco_score']
+        
+        # Score Final Ponderado (você pode ajustar os pesos)
+        # Exemplo: Momentum 40%, Liquidez 30%, Risco 30%
+        pesos = {
+            'momentum': 0.40,
+            'liquidez': 0.30,
+            'risco': 0.30
+        }
+        
+        consolidado['score_final'] = (
+            consolidado['mom_score_norm'] * pesos['momentum'] +
+            consolidado['liq_score_norm'] * pesos['liquidez'] +
+            consolidado['risco_score_norm'] * pesos['risco']
+        )
+        
+        # Classificação por perfil
+        consolidado['classificacao'] = consolidado['score_final'].apply(
+            self._classificar_ativo
+        )
+        
+        # Ordenar por score final
+        self.ranking_final = consolidado.sort_values('score_final', ascending=False)
+        
+        return self.ranking_final
+    
+    def _classificar_ativo(self, score):
+        """Classifica o ativo baseado no score final"""
+        if score >= 80:
+            return "    COMPRA FORTE"
+        elif score >= 60:
+            return "    COMPRA MODERADA"
+        elif score >= 40:
+            return "    NEUTRO"
+        elif score >= 20:
+            return "    EVITAR"
+        else:
+            return "    VENDA FORTE"
+    
+    def gerar_recomendacoes(self, top_n=10):
+        """
+        Gera recomendações detalhadas baseadas na análise consolidada
+        """
+        if self.ranking_final is None:
+            print("❌ Execute a consolidação primeiro!")
+            return None
+        
+        print("\n" + "="*70)
+        print("🎯 RECOMENDAÇÕES DE INVESTIMENTO")
+        print("="*70)
+        
+        # Top ativos
+        top_ativos = self.ranking_final.head(top_n)
+        
+        print(f"\n  TOP {top_n} ATIVOS RECOMENDADOS:")
+        print("-" * 70)
+        
+        for i, (idx, ativo) in enumerate(top_ativos.iterrows(), 1):
+            print(f"\n{i}. {ativo['ticker']} - {ativo['classificacao']}")
+            print(f"   Momentum: {ativo['mom_retorno']:.2%} | Score: {ativo['mom_score_norm']:.1f}")
+            print(f"   Liquidez: R$ {ativo['adtv_21']/1e6:.1f}M | Score: {ativo['liq_score_norm']:.1f}")
+            print(f"   Risco: {ativo['vol_historica']:.2%} | Score: {ativo['risco_score_norm']:.1f}")
+            print(f"   Score Final: {ativo['score_final']:.1f}")
+        
+        return top_ativos
+    
+    def analisar_perfil_risco(self):
+        """
+        Análise detalhada do perfil de risco dos ativos
+        """
+        if self.ranking_final is None:
+            return None
+        
+        print("\n" + "="*70)
+        print("  ANÁLISE DE PERFIL DE RISCO")
+        print("="*70)
+        
+        baixo_risco = self.ranking_final[self.ranking_final['vol_historica'] < 0.20]
+        medio_risco = self.ranking_final[(self.ranking_final['vol_historica'] >= 0.20) & 
+                                         (self.ranking_final['vol_historica'] < 0.35)]
+        alto_risco = self.ranking_final[self.ranking_final['vol_historica'] >= 0.35]
+        
+        print(f"\n   Baixo Risco (<20%): {len(baixo_risco)} ativos")
+        print(f"   Médio Risco (20-35%): {len(medio_risco)} ativos")
+        print(f"   Alto Risco (>35%): {len(alto_risco)} ativos")
+
+        if not baixo_risco.empty:
+            top_baixo = baixo_risco.iloc[0]
+            print(f"\n   Melhor ativo de Baixo Risco: {top_baixo['ticker']} (Score: {top_baixo['score_final']:.1f})")
+        
+        if not medio_risco.empty:
+            top_medio = medio_risco.iloc[0]
+            print(f"   elhor ativo de Médio Risco: {top_medio['ticker']} (Score: {top_medio['score_final']:.1f})")
+        
+        if not alto_risco.empty:
+            top_alto = alto_risco.iloc[0]
+            print(f"   Melhor ativo de Alto Risco: {top_alto['ticker']} (Score: {top_alto['score_final']:.1f})")
+    
+    def gerar_relatorio_completo(self, filename="relatorio_investimento.xlsx"):
+        """
+        Gera um relatório completo em Excel com todas as análises
+        """
+        if self.ranking_final is None:
+            print("   Execute a consolidação primeiro!")
+            return
+        
+        with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+            # Aba de recomendações
+            self.ranking_final.to_excel(writer, sheet_name='Recomendações', index=False)
+            
+            # Aba de momentum
+            self.resultados['momentum'].to_excel(writer, sheet_name='Momentum', index=False)
+            
+            # Aba de liquidez
+            self.resultados['liquidez'].to_excel(writer, sheet_name='Liquidez', index=False)
+            
+            # Aba de volatilidade
+            self.resultados['volatilidade'].to_excel(writer, sheet_name='Volatilidade', index=False)
+            
+            # Aba de estatísticas
+            estatisticas = pd.DataFrame({
+                'Métrica': ['Média Momentum', 'Média Liquidez', 'Média Volatilidade', 
+                           'Total Ativos', 'Data Análise'],
+                'Valor': [
+                    f"{self.ranking_final['mom_retorno'].mean():.2%}",
+                    f"R$ {self.ranking_final['adtv_21'].mean()/1e6:.1f}M",
+                    f"{self.ranking_final['vol_historica'].mean():.2%}",
+                    len(self.ranking_final),
+                    datetime.now().strftime('%Y-%m-%d %H:%M')
+                ]
+            })
+            estatisticas.to_excel(writer, sheet_name='Estatísticas', index=False)
+        
+        print(f"\n  Relatório completo salvo em: {filename}")
+
+def executar_analise_completa(tickers=None, perfil_risco='moderado'):
+    """
+    Função principal que executa toda a análise e gera recomendações
+    
+    Args:
+        tickers: lista específica de tickers (None = todos)
+        perfil_risco: 'conservador', 'moderado' ou 'agressivo'
+    """
+    
+    # Criar instância da análise
+    analise = AnaliseConsolidada()
+    
+    # Executar todas as análises
+    analise.executar_todas_analises(tickers)
+    
+    # Consolidar resultados
+    ranking = analise.consolidar_resultados()
+    
+    if ranking is not None:
+        # Gerar recomendações
+        top_10 = analise.gerar_recomendacoes(top_n=10)
+        
+        # Análise de risco
+        analise.analisar_perfil_risco()
+        
+        # Gerar relatório
+        analise.gerar_relatorio_completo()
+        
+        # Retornar o ranking completo
+        return ranking
+    
+    return None
+
+if __name__ == "__main__":
+
+    print("INICIANDO ANÁLISE COMPLETA DE ATIVOS")
+    ranking_final = executar_analise_completa()

@@ -5,7 +5,7 @@ from database.connection import DataBase
 class DataFetcher:
     def __init__(self):
         self.lista_tickers = [ "MSFT"]
-        self.period = "5d"
+        self.period = "1y"
         self.interval = "1d"
         self.db = DataBase()
 
