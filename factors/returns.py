@@ -117,11 +117,11 @@ class AnaliseConsolidada:
         Gera recomendações detalhadas baseadas na análise consolidada
         """
         if self.ranking_final is None:
-            print("❌ Execute a consolidação primeiro!")
+            print(" Execute a consolidação primeiro!")
             return None
         
         print("\n" + "="*70)
-        print("🎯 RECOMENDAÇÕES DE INVESTIMENTO")
+        print(" RECOMENDAÇÕES DE INVESTIMENTO")
         print("="*70)
         
         # Top ativos
@@ -171,7 +171,7 @@ class AnaliseConsolidada:
             top_alto = alto_risco.iloc[0]
             print(f"   Melhor ativo de Alto Risco: {top_alto['ticker']} (Score: {top_alto['score_final']:.1f})")
     
-    def gerar_relatorio_completo(self, filename="relatorio_investimento.xlsx"):
+    def gerar_relatorio_completo(self, filename="reports/relatorio_investimento.xlsx"):
         """
         Gera um relatório completo em Excel com todas as análises
         """

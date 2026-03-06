@@ -48,7 +48,7 @@ def get_data_momentum(db_path="database/acoes.db", tickers=None, min_days=273):
         if len(dados_ticker) >= min_days:
             tickers_validos.append(ticker)
         else:
-            print(f"⚠️ {ticker}: apenas {len(dados_ticker)} dias (mínimo {min_days}) - será ignorado")
+            print(f"AVISO: {ticker}: apenas {len(dados_ticker)} dias (mínimo {min_days}) - será ignorado")
     
 
     if tickers_validos:

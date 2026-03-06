@@ -1,6 +1,8 @@
 from api.market_data import DataFetcher
 from factors.returns import executar_analise_completa
 
+import sys
+
 def main():
 
     fetcher = DataFetcher()
