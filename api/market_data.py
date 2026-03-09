@@ -4,8 +4,8 @@ from database.connection import DataBase
 
 class DataFetcher:
     def __init__(self):
-        self.lista_tickers = [ "MSFT", "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "B3SA3.SA" ]
-        self.period = "2y"
+        self.lista_tickers = [ "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "B3SA3.SA" ]
+        self.period = "8y"
         self.interval = "1d"
         self.db = DataBase()
 
@@ -19,6 +19,8 @@ class DataFetcher:
         print(f"Baixando dados para {self.lista_tickers}...")
         dados = yf.download(self.lista_tickers, period=period, interval=interval)
         return dados
+    
+    
     
     def get_data(self):
         dados = self.set_interval()
@@ -54,6 +56,9 @@ class DataFetcher:
                     continue
         return pd.DataFrame(linhas)
     
+
+    
+    
     def save_data(self):
         dados_brutos = self.set_interval()
         if dados_brutos is None or dados_brutos.empty:
@@ -67,3 +72,4 @@ class DataFetcher:
         dados_novos = self.db.insert_dados(dados_linha)
         self.db.export_to_excel()
         return dados_novos
+

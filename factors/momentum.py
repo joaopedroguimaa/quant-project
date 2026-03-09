@@ -4,13 +4,13 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-def get_data_momentum(db_path="database/acoes.db", tickers=None, min_days=273):
+def get_data_momentum(db_path="database/acoes.db", tickers=None, min_days=273, data_corte=None):
     """
-    
     Args:
         db_path: caminho do arquivo .db
         tickers: lista de tickers (None = todos)
-        dias_necessarios: mínimo de dias necessários para cálculo
+        min_days: mínimo de dias necessários para cálculo
+        data_corte: data limite para buscar os dados (formato 'YYYY-MM-DD' ou datetime)
     
     Returns:
         DataFrame com colunas: ticker, date, close
@@ -18,29 +18,35 @@ def get_data_momentum(db_path="database/acoes.db", tickers=None, min_days=273):
 
     conn = sqlite3.connect(db_path)
     
-
     query = """
         SELECT ticker, date, close
         FROM precos_acoes
         WHERE 1=1
     """
     
+    params = []
+    
+   
+    if data_corte:
+      
+        if hasattr(data_corte, 'strftime'):
+            data_corte_str = data_corte.strftime('%Y-%m-%d')
+        else:
+            data_corte_str = str(data_corte)
+        query += f" AND date <= ?"
+        params.append(data_corte_str)
 
     if tickers:
         placeholders = ','.join(['?'] * len(tickers))
         query += f" AND ticker IN ({placeholders})"
-        params = tickers
-    else:
-        params = []
+        params.extend(tickers)
     
-
     query += " ORDER BY ticker, date"
     
 
     df = pd.read_sql_query(query, conn, params=params)
     conn.close()
     
-
 
     tickers_validos = []
     for ticker in df['ticker'].unique():
@@ -49,13 +55,10 @@ def get_data_momentum(db_path="database/acoes.db", tickers=None, min_days=273):
             tickers_validos.append(ticker)
         else:
             print(f"AVISO: {ticker}: apenas {len(dados_ticker)} dias (mínimo {min_days}) - será ignorado")
-    
-
+  
     if tickers_validos:
         df = df[df['ticker'].isin(tickers_validos)]
-        
     else:
-
         return pd.DataFrame()
     
     return df

@@ -1,4 +1,4 @@
-# analise_returns.py
+# factors/returns.py
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -21,22 +21,35 @@ class AnaliseConsolidada:
         self.resultados = {}
         self.ranking_final = None
         
-    def executar_todas_analises(self, tickers=None):
-    
-        df_momentum = get_data_momentum(self.db_path, tickers)
+    def executar_todas_analises(self, tickers=None, data_corte=None):
+        """
+        Executa todas as análises com opção de data de corte
+        """
+        print(f"\nExecutando análises com data de corte: {data_corte}")
+        
+        # Momentum
+        df_momentum = get_data_momentum(self.db_path, tickers, data_corte=data_corte)
         if not df_momentum.empty:
             self.resultados['momentum'] = ranking_momentum(df_momentum)
-            print(f"    {len(self.resultados['momentum'])} ativos analisados")
+            print(f"    {len(self.resultados['momentum'])} ativos analisados (momentum)")
+        else:
+            print("    Sem dados para momentum")
 
-        df_liquidity = get_data_liquidity(self.db_path, tickers)
+        # Liquidez
+        df_liquidity = get_data_liquidity(self.db_path, tickers, data_corte=data_corte)
         if not df_liquidity.empty:
             self.resultados['liquidez'] = ranking_liquidity(df_liquidity)
-            print(f"    {len(self.resultados['liquidez'])} ativos analisados")
+            print(f"    {len(self.resultados['liquidez'])} ativos analisados (liquidez)")
+        else:
+            print("    Sem dados para liquidez")
         
-        df_volatility = get_data_volatility(self.db_path, tickers)
+        # Volatilidade
+        df_volatility = get_data_volatility(self.db_path, tickers, data_corte=data_corte)
         if not df_volatility.empty:
             self.resultados['volatilidade'] = ranking_volatility(df_volatility)
-            print(f"    {len(self.resultados['volatilidade'])} ativos analisados")
+            print(f"    {len(self.resultados['volatilidade'])} ativos analisados (volatilidade)")
+        else:
+            print("    Sem dados para volatilidade")
         
         return self.resultados
     
@@ -57,14 +70,11 @@ class AnaliseConsolidada:
             'momentum_score': 'mom_score'
         })
         
-
         liq = self.resultados['liquidez'][['ticker', 'adtv_21', 'amihud_medio_21', 'liquidez_score']]
         consolidado = consolidado.merge(liq, on='ticker', how='inner')
         
-
         vol = self.resultados['volatilidade'][['ticker', 'vol_historica', 'vol_park_media', 'risco_score']]
         consolidado = consolidado.merge(vol, on='ticker', how='inner')
-
         
         # Momentum: quanto maior, melhor
         consolidado['mom_score_norm'] = consolidado['mom_score'].rank(pct=True) * 100
@@ -75,8 +85,7 @@ class AnaliseConsolidada:
         # Risco: quanto MENOR, melhor (inverter o score)
         consolidado['risco_score_norm'] = 100 - consolidado['risco_score']
         
-        # Score Final Ponderado (você pode ajustar os pesos)
-        # Exemplo: Momentum 40%, Liquidez 30%, Risco 30%
+        # Score Final Ponderado
         pesos = {
             'momentum': 0.40,
             'liquidez': 0.30,
@@ -102,15 +111,15 @@ class AnaliseConsolidada:
     def _classificar_ativo(self, score):
         """Classifica o ativo baseado no score final"""
         if score >= 80:
-            return "    COMPRA FORTE"
+            return "COMPRA FORTE"
         elif score >= 60:
-            return "    COMPRA MODERADA"
+            return "COMPRA MODERADA"
         elif score >= 40:
-            return "    NEUTRO"
+            return "NEUTRO"
         elif score >= 20:
-            return "    EVITAR"
+            return "EVITAR"
         else:
-            return "    VENDA FORTE"
+            return "VENDA FORTE"
     
     def gerar_recomendacoes(self, top_n=10):
         """
@@ -124,7 +133,6 @@ class AnaliseConsolidada:
         print(" RECOMENDAÇÕES DE INVESTIMENTO")
         print("="*70)
         
-        # Top ativos
         top_ativos = self.ranking_final.head(top_n)
         
         print(f"\n  TOP {top_n} ATIVOS RECOMENDADOS:")
@@ -165,7 +173,7 @@ class AnaliseConsolidada:
         
         if not medio_risco.empty:
             top_medio = medio_risco.iloc[0]
-            print(f"   elhor ativo de Médio Risco: {top_medio['ticker']} (Score: {top_medio['score_final']:.1f})")
+            print(f"   Melhor ativo de Médio Risco: {top_medio['ticker']} (Score: {top_medio['score_final']:.1f})")
         
         if not alto_risco.empty:
             top_alto = alto_risco.iloc[0]
@@ -180,19 +188,11 @@ class AnaliseConsolidada:
             return
         
         with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-            # Aba de recomendações
             self.ranking_final.to_excel(writer, sheet_name='Recomendações', index=False)
-            
-            # Aba de momentum
             self.resultados['momentum'].to_excel(writer, sheet_name='Momentum', index=False)
-            
-            # Aba de liquidez
             self.resultados['liquidez'].to_excel(writer, sheet_name='Liquidez', index=False)
-            
-            # Aba de volatilidade
             self.resultados['volatilidade'].to_excel(writer, sheet_name='Volatilidade', index=False)
             
-            # Aba de estatísticas
             estatisticas = pd.DataFrame({
                 'Métrica': ['Média Momentum', 'Média Liquidez', 'Média Volatilidade', 
                            'Total Ativos', 'Data Análise'],
@@ -208,40 +208,22 @@ class AnaliseConsolidada:
         
         print(f"\n  Relatório completo salvo em: {filename}")
 
-def executar_analise_completa(tickers=None, perfil_risco='moderado'):
+def executar_analise_completa(tickers=None, perfil_risco='moderado', data_corte=None):
     """
     Função principal que executa toda a análise e gera recomendações
-    
-    Args:
-        tickers: lista específica de tickers (None = todos)
-        perfil_risco: 'conservador', 'moderado' ou 'agressivo'
     """
-    
-    # Criar instância da análise
     analise = AnaliseConsolidada()
-    
-    # Executar todas as análises
-    analise.executar_todas_analises(tickers)
-    
-    # Consolidar resultados
+    analise.executar_todas_analises(tickers, data_corte=data_corte)
     ranking = analise.consolidar_resultados()
     
     if ranking is not None:
-        # Gerar recomendações
         top_10 = analise.gerar_recomendacoes(top_n=10)
-        
-        # Análise de risco
         analise.analisar_perfil_risco()
-        
-        # Gerar relatório
         analise.gerar_relatorio_completo()
-        
-        # Retornar o ranking completo
         return ranking
     
     return None
 
 if __name__ == "__main__":
-
     print("INICIANDO ANÁLISE COMPLETA DE ATIVOS")
     ranking_final = executar_analise_completa()
