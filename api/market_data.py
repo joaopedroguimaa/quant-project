@@ -4,8 +4,13 @@ from database.connection import DataBase
 
 class DataFetcher:
     def __init__(self):
-        self.lista_tickers = [ "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "ABEV3.SA", "B3SA3.SA" ]
-        self.period = "8y"
+        self.lista_tickers = [
+            "PETR3.SA", "PETR4.SA", "VALE3.SA", "GGBR4.SA", "CSNA3.SA",
+            "ITUB4.SA", "BBDC4.SA", "BBAS3.SA", "SANB11.SA", "B3SA3.SA", "BPAC11.SA",
+
+
+        ]
+        self.period = "3y"
         self.interval = "1d"
         self.db = DataBase()
 
