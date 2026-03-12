@@ -332,33 +332,24 @@ class SimuladorCarteira:
                 
                 # 5. Resumo
                 resumo_data = {
-                    'Métrica': ['Saldo Inicial', 'Saldo Final', 'Retorno Total', 'Nº Rebalanceamentos'],
-                    'Valor': [
-                        f"R$ {self.saldo_inicial:,.2f}",
-                        f"R$ {df_historico.iloc[-1]['patrimonio_total']:,.2f}" if not df_historico.empty else "R$ 0.00",
-                        f"{df_historico.iloc[-1]['retorno_acumulado']:.2f}%" if not df_historico.empty else "0.00%",
-                        len(df_historico)
-                    ]
+                    'Saldo Inicial': [f"R$ {self.saldo_inicial:,.2f}"],
+                    'Saldo Final': [f"R$ {df_historico.iloc[-1]['patrimonio_total']:,.2f}" if not df_historico.empty else "R$ 0.00"],
+                    'Retorno Total': [f"{df_historico.iloc[-1]['retorno_acumulado']:.2f}%" if not df_historico.empty else "0.00%"],
+                    'Nº Rebalanceamentos': [len(df_historico)]
                 }
                 
                 if 'ibov_retorno_acumulado' in df_historico.columns and not df_historico.empty:
-                    resumo_data['Métrica'].extend([
-                        'IBOV Inicial (pontos)',
-                        'IBOV Final (pontos)',
-                        'Retorno IBOV Total',
-                        'Alpha (Carteira vs IBOV)'
-                    ])
                     ibov_ini_pt = df_historico.iloc[0]['ibov_pontos']
                     ibov_fim_pt = df_historico.iloc[-1]['ibov_pontos']
                     ibov_ret = df_historico.iloc[-1]['ibov_retorno_acumulado']
                     alpha = df_historico.iloc[-1]['retorno_acumulado'] - ibov_ret
                     
-                    resumo_data['Valor'].extend([
-                        f"{ibov_ini_pt:,.0f}",
-                        f"{ibov_fim_pt:,.0f}",
-                        f"{ibov_ret:.2f}%",
-                        f"{alpha:.2f} p.p."
-                    ])
+                    resumo_data.update({
+                        'IBOV Inicial (pontos)': [f"{ibov_ini_pt:,.0f}"],
+                        'IBOV Final (pontos)': [f"{ibov_fim_pt:,.0f}"],
+                        'Retorno IBOV Total': [f"{ibov_ret:.2f}%"],
+                        'Alpha (Carteira vs IBOV)': [f"{alpha:.2f} p.p."]
+                    })
                     
                 resumo = pd.DataFrame(resumo_data)
                 resumo.to_excel(writer, sheet_name='Resumo', index=False)

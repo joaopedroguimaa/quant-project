@@ -5,7 +5,7 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
-# Importar os módulos existentes
+
 from factors.momentum import get_data_momentum, ranking_momentum
 from factors.liquidity import get_data_liquidity, ranking_liquidity
 from factors.volatility import get_data_volatility, ranking_volatility
@@ -35,7 +35,7 @@ class AnaliseConsolidada:
         else:
             print("    Sem dados para momentum")
 
-        # Liquidez
+
         df_liquidity = get_data_liquidity(self.db_path, tickers, data_corte=data_corte)
         if not df_liquidity.empty:
             self.resultados['liquidez'] = ranking_liquidity(df_liquidity)
@@ -43,7 +43,7 @@ class AnaliseConsolidada:
         else:
             print("    Sem dados para liquidez")
         
-        # Volatilidade
+
         df_volatility = get_data_volatility(self.db_path, tickers, data_corte=data_corte)
         if not df_volatility.empty:
             self.resultados['volatilidade'] = ranking_volatility(df_volatility)
@@ -61,10 +61,10 @@ class AnaliseConsolidada:
             print("Execute todas as análises primeiro!")
             return None
         
-        # Começar com o momentum como base
+
         consolidado = self.resultados['momentum'].copy()
         
-        # Renomear colunas para evitar conflito
+
         consolidado = consolidado.rename(columns={
             'retorno_12m': 'mom_retorno',
             'momentum_score': 'mom_score'
@@ -85,7 +85,7 @@ class AnaliseConsolidada:
         # Risco: quanto MENOR, melhor (inverter o score)
         consolidado['risco_score_norm'] = 100 - consolidado['risco_score']
         
-        # Score Final Ponderado
+
         pesos = {
             'momentum': 0.40,
             'liquidez': 0.30,
@@ -103,7 +103,7 @@ class AnaliseConsolidada:
             self._classificar_ativo
         )
         
-        # Ordenar por score final
+
         self.ranking_final = consolidado.sort_values('score_final', ascending=False)
         
         return self.ranking_final
@@ -128,11 +128,7 @@ class AnaliseConsolidada:
         if self.ranking_final is None:
             print(" Execute a consolidação primeiro!")
             return None
-        
-        print("\n" + "="*70)
-        print(" RECOMENDAÇÕES DE INVESTIMENTO")
-        print("="*70)
-        
+               
         top_ativos = self.ranking_final.head(top_n)
         
         print(f"\n  TOP {top_n} ATIVOS RECOMENDADOS:")
@@ -193,17 +189,14 @@ class AnaliseConsolidada:
             self.resultados['liquidez'].to_excel(writer, sheet_name='Liquidez', index=False)
             self.resultados['volatilidade'].to_excel(writer, sheet_name='Volatilidade', index=False)
             
-            estatisticas = pd.DataFrame({
-                'Métrica': ['Média Momentum', 'Média Liquidez', 'Média Volatilidade', 
-                           'Total Ativos', 'Data Análise'],
-                'Valor': [
-                    f"{self.ranking_final['mom_retorno'].mean():.2%}",
-                    f"R$ {self.ranking_final['adtv_21'].mean()/1e6:.1f}M",
-                    f"{self.ranking_final['vol_historica'].mean():.2%}",
-                    len(self.ranking_final),
-                    datetime.now().strftime('%Y-%m-%d %H:%M')
-                ]
-            })
+            estatisticas_data = {
+                'Média Momentum': [f"{self.ranking_final['mom_retorno'].mean():.2%}"],
+                'Média Liquidez': [f"R$ {self.ranking_final['adtv_21'].mean()/1e6:.1f}M"],
+                'Média Volatilidade': [f"{self.ranking_final['vol_historica'].mean():.2%}"],
+                'Total Ativos': [len(self.ranking_final)],
+                'Data Análise': [datetime.now().strftime('%Y-%m-%d %H:%M')]
+            }
+            estatisticas = pd.DataFrame(estatisticas_data)
             estatisticas.to_excel(writer, sheet_name='Estatísticas', index=False)
         
         print(f"\n  Relatório completo salvo em: {filename}")
@@ -225,5 +218,4 @@ def executar_analise_completa(tickers=None, perfil_risco='moderado', data_corte=
     return None
 
 if __name__ == "__main__":
-    print("INICIANDO ANÁLISE COMPLETA DE ATIVOS")
     ranking_final = executar_analise_completa()

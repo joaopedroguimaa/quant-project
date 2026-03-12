@@ -24,10 +24,9 @@ def get_data_volatility(db_path="database/acoes.db", tickers=None, data_corte=No
     """
     
     params = []
-    
-    # Adicionar filtro de data_corte se fornecido
+
     if data_corte:
-        # Converter para string se for datetime
+ 
         if hasattr(data_corte, 'strftime'):
             data_corte_str = data_corte.strftime('%Y-%m-%d')
         else:
@@ -35,7 +34,7 @@ def get_data_volatility(db_path="database/acoes.db", tickers=None, data_corte=No
         query += f" AND date <= ?"
         params.append(data_corte_str)
     
-    # Adicionar filtro de tickers se fornecido
+
     if tickers:
         placeholders = ','.join(['?'] * len(tickers))
         query += f" AND ticker IN ({placeholders})"

@@ -6,7 +6,7 @@ class DataFetcher:
     def __init__(self):
         self.lista_tickers = [
             "PETR3.SA", "PETR4.SA", "VALE3.SA", "GGBR4.SA", "CSNA3.SA",
-            "ITUB4.SA", "BBDC4.SA", "BBAS3.SA", "SANB11.SA", "B3SA3.SA", "BPAC11.SA",
+            "ITUB4.SA", "BBDC4.SA", "BBAS3.SA", "SANB11.SA", "B3SA3.SA", "BPAC11.SA", 
 
 
         ]
