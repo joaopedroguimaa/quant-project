@@ -67,3 +67,13 @@ class DataBase:
                     print(" Erro ao inserir")
          
             return registros_novos
+
+    def export_to_excel(self, excel_name="database/acoes.xlsx"):
+        print(f"Exportando banco de dados para {excel_name}...")
+        try:
+            with sqlite3.connect(self.db_name) as conn:
+                df = pd.read_sql_query("SELECT * FROM precos_acoes", conn)
+                df.to_excel(excel_name, index=False)
+                print(f"Exportação para {excel_name} concluída com sucesso!")
+        except Exception as e:
+            print(f"Erro ao exportar para Excel: {e}")
