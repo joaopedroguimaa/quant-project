@@ -284,12 +284,12 @@ class SimuladorCarteira:
         print(f"  Patrimônio Final: R$ {patrimonio_final:,.2f}")
         print(f"  Retorno Total: {retorno_total:.2f}%")
         
-        # Salvar relatório
+
         self.salvar_relatorio_excel(df_historico)
     
     def salvar_relatorio_excel(self, df_historico, filename="reports/backtest_resultado.xlsx"):
         """Salva resultados em Excel"""
-        # Criar pasta reports se não existir
+      
         reports_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports")
         os.makedirs(reports_dir, exist_ok=True)
         
