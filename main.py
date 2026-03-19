@@ -8,7 +8,7 @@ def main():
     fetcher = DataFetcher()
     fetcher.get_data()
     novos = fetcher.save_data()
-    print(f"{novos} novos registros salvos!")
+    print(f"{novos} novos registros salvos")
 
 
     ranking = executar_analise_completa()
